@@ -1,0 +1,41 @@
+
+
+
+# Load Analysis libraries
+library(geepack)
+library(broom)  # For easy extraction and handling of model output
+
+# Fetch Data
+df <- read.csv("Pathway.csv")
+
+# Convert Sex, Hypertension, and Diabetes to factor (categorical)
+data$SEX <- as.factor(data$SEX)
+data$HYPERTENSION <- as.factor(data$HYPERTENSION)
+data$DIABETESTYPE2 <- as.factor(data$DIABETESTYPE2)
+
+# Define the outcomes with column names
+outcomes <- c("ENT_INPATIENT_READMISSION_30_Y_N", "ENT_INPATIENT_READMISSION_60_Y_N", "ENT_INPATIENT_READMISSION_90_Y_N",
+              "ENT_EMERGENCY_READMISSION_30_Y_N", "ENT_EMERGENCY_READMISSION_60_Y_N", "ENT_EMERGENCY_READMISSION_90_Y_N",
+              "ENT_OBSERVATION_READMISSION_30_Y_N", "ENT_OBSERVATION_READMISSION_60_Y_N", "ENT_OBSERVATION_READMISSION_90_Y_N")
+
+# Create dataframe to receive results
+results_all <- data.frame()
+
+# Loop through each outcome variable
+for (outcome in outcomes) {
+    # Fit the GEE model
+    gee_model <- geeglm(as.formula(paste(outcome, "~ CARESENSE_Y_N + AGE_AT_PROCEDURE + SEX + DIABETESTYPE2 + HYPERTENSION")), 
+                        data = df, 
+                        family = binomial("logit"), 
+                        id = ID, 
+                        corstr = "exchangeable")
+
+    # Use Tidy to retriece the summary
+    tidy_gee <- tidy(gee_model, conf.int = TRUE, exponentiate = TRUE)
+
+    # Use Tidy to add a column to identify the outcome
+    tidy_gee$outcome <- outcome
+
+    # Append to the results dataframe
+    results_all <- rbind(results_all, tidy_gee)
+}
